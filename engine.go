@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 )
@@ -10,9 +11,10 @@ import (
 type Decision string
 
 const (
-	DecisionAllow Decision = "allow"
-	DecisionAsk   Decision = "ask"
-	DecisionDeny  Decision = "deny"
+	DecisionAllow   Decision = "allow"
+	DecisionAsk     Decision = "ask"
+	DecisionDeny    Decision = "deny"
+	DefaultDecision Decision = DecisionAsk
 )
 
 // Match captures the matched rule and pattern.
@@ -23,40 +25,60 @@ type Match struct {
 	Segment  string   `json:"segment"`
 }
 
-// EvalResult is the final evaluation output.
 type EvalResult struct {
 	Decision Decision `json:"decision"`
 	Match    *Match   `json:"match,omitempty"`
+	Reason   string   `json:"reason"`
 }
 
-func EvaluateCommand(rs Ruleset, command string) (EvalResult, string) {
-	segments := splitCommands(command)
+// Based on the provided ruleset, evaluate the command and return the decision and reason.
+// It splits the commands in segments (e.g. "echo hi && kubectl get secrets" -> ["echo hi", "kubectl get secrets"]),
+// finds the strictest matching rule for each segment and returns the strictest overall decision
+// e.g. if any segment matches a deny rule, the overall decision is deny, else if any segment matches an ask rule,
+// the overall decision is ask, else allow.
+func EvaluateCommand(rs Ruleset, command string) EvalResult {
+	segments := SplitCommandToSegments(command)
 	if len(segments) == 0 {
-		return EvalResult{Decision: DecisionAsk}, "no command segments found"
+		return EvalResult{
+			Decision: DefaultDecision,
+			Reason:   "no command segments found",
+		}
 	}
 
-	var best *Match
-	bestRank := -1
+	var strictest *Match
+	strictestRank := -1
+	// For each segment, find the most restrictive matching rule.
+	// For example in "echo hi && kubectl get secrets", "echo hi" matches an allow rule,
+	// but "kubectl get secrets" matches an ask or deny, so the overall decision is ask or deny.
 	for _, seg := range segments {
-		m := evaluateSegment(rs, seg)
-		if m == nil {
+		segMatch := EvaluateSegment(rs, seg)
+		if segMatch == nil {
 			continue
 		}
-		rank := decisionRank(m.Decision)
-		if rank > bestRank {
-			best = m
-			bestRank = rank
+		segRank := strictestDecisionRank(segMatch.Decision)
+		if segRank > strictestRank {
+			strictest = segMatch
+			strictestRank = segRank
 		}
 	}
 
-	if best == nil {
-		return EvalResult{Decision: DecisionAsk}, "no matching rules found"
+	// If no rules matched any segment, give the default decision.
+	if strictest == nil {
+		return EvalResult{
+			Decision: DefaultDecision,
+			Reason:   "no matching rules found",
+		}
 	}
-	reason := fmt.Sprintf("%s due to rule %s", best.Decision, best.Rule)
-	return EvalResult{Decision: best.Decision, Match: best}, reason
+
+	return EvalResult{
+		Decision: strictest.Decision,
+		Match:    strictest,
+		Reason:   fmt.Sprintf("%s due to rule %s", strictest.Decision, strictest.Rule),
+	}
 }
 
-func evaluateSegment(rs Ruleset, segment string) *Match {
+// Find the strictest (deny > ask > allow) matching rule for the given segment.
+func EvaluateSegment(rs Ruleset, segment string) *Match {
 	if m := firstMatch(rs, segment, DecisionDeny); m != nil {
 		return m
 	}
@@ -91,7 +113,7 @@ func firstMatch(rs Ruleset, segment string, d Decision) *Match {
 	return nil
 }
 
-func decisionRank(d Decision) int {
+func strictestDecisionRank(d Decision) int {
 	switch d {
 	case DecisionAllow:
 		return 0
@@ -100,11 +122,13 @@ func decisionRank(d Decision) int {
 	case DecisionDeny:
 		return 2
 	default:
+		log.Panicln("Unknown decision provided:", d)
 		return -1
 	}
 }
 
-func splitCommands(input string) []string {
+// Split the input command into segments based on common shell operators (;, &&, ||, |, &) while respecting quoted strings.
+func SplitCommandToSegments(input string) []string {
 	parts := splitByOps(input)
 	out := make([]string, 0, len(parts))
 	for _, p := range parts {

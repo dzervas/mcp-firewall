@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -37,46 +38,49 @@ type configError struct {
 
 func (e configError) Error() string { return e.msg }
 
-func defaultConfigDir() (string, error) {
+func defaultConfigDir() string {
 	if v := strings.TrimSpace(os.Getenv(envConfigDir)); v != "" {
-		return v, nil
+		return v
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("resolve home dir: %w", err)
+		log.Fatalln("Could not find the user's home directory:", err)
+		return ""
 	}
-	return filepath.Join(home, ".config", "pretooluse"), nil
+	return filepath.Join(home, ".config", "pretooluse")
 }
 
-func resolveProjectRuleset(cwd string) (string, error) {
+func resolveProjectRuleset(cwd string) string {
 	if v := strings.TrimSpace(os.Getenv(envRuleset)); v != "" {
 		st, err := os.Stat(v)
 		if err != nil {
-			return "", configError{msg: fmt.Sprintf("ruleset override %q not readable: %v", v, err)}
+			log.Fatalln("Ruleset override", v, "not readable:", err)
+			return ""
 		}
 		if st.IsDir() {
 			p := filepath.Join(v, ".pretooluse.jsonnet")
 			if _, err := os.Stat(p); err != nil {
-				return "", configError{msg: fmt.Sprintf("ruleset override dir %q missing .tools.jsonnet", v)}
+				log.Fatalln("Ruleset override dir", v, "missing .pretooluse.jsonnet:", err)
+				return ""
 			}
-			return p, nil
+			return p
 		}
-		return v, nil
+		return v
 	}
 
 	local := filepath.Join(cwd, ".pretooluse.jsonnet")
 	if _, err := os.Stat(local); err == nil {
-		return local, nil
+		return local
 	}
 
 	root, err := gitRoot(cwd)
 	if err == nil && root != "" {
 		candidate := filepath.Join(root, ".pretooluse.jsonnet")
 		if _, err := os.Stat(candidate); err == nil {
-			return candidate, nil
+			return candidate
 		}
 	}
-	return "", nil
+	return ""
 }
 
 func gitRoot(cwd string) (string, error) {
@@ -90,16 +94,10 @@ func gitRoot(cwd string) (string, error) {
 }
 
 func loadRuleset(cwd string) (Ruleset, error) {
-	cfgDir, err := defaultConfigDir()
-	if err != nil {
-		return Ruleset{}, configError{msg: err.Error()}
-	}
+	cfgDir := defaultConfigDir()
 
 	globalPath := filepath.Join(cfgDir, "config.jsonnet")
-	projectPath, err := resolveProjectRuleset(cwd)
-	if err != nil {
-		return Ruleset{}, err
-	}
+	projectPath := resolveProjectRuleset(cwd)
 
 	globalRules, globalOrder, err := loadRuleMap(globalPath, cfgDir)
 	if err != nil {

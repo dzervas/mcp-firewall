@@ -62,11 +62,11 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		}
 
 		command := strings.Join(args[1:], " ")
-		result, reason := EvaluateCommand(rs, command)
-		fmt.Println("reason:", reason)
+		result := EvaluateCommand(rs, command)
 		if _, err := fmt.Fprintln(stdout, result.Decision); err != nil {
 			return err
 		}
+		fmt.Println("reason:", result.Reason)
 		if result.Match != nil {
 			_, err = fmt.Fprintf(stderr, "rule=%s decision=%s pattern=%s segment=%s\n", result.Match.Rule, result.Match.Decision, result.Match.Pattern, result.Match.Segment)
 		} else {
@@ -97,8 +97,8 @@ func runClaudeAdapter(rs Ruleset, stdin io.Reader, stdout io.Writer) error {
 		return nil
 	}
 
-	res, reason := EvaluateCommand(rs, cmd)
-	return adapters.EncodeClaudeResponse(stdout, string(res.Decision), reason)
+	res := EvaluateCommand(rs, cmd)
+	return adapters.EncodeClaudeResponse(stdout, string(res.Decision), res.Reason)
 }
 
 func runCopilotAdapter(rs Ruleset, stdin io.Reader, stdout io.Writer) error {
@@ -107,8 +107,8 @@ func runCopilotAdapter(rs Ruleset, stdin io.Reader, stdout io.Writer) error {
 		log.Fatalln("decode copilot command:", err)
 		return nil
 	}
-	res, reason := EvaluateCommand(rs, cmd)
-	return adapters.EncodeCopilotResponse(stdout, string(res.Decision), reason)
+	res := EvaluateCommand(rs, cmd)
+	return adapters.EncodeCopilotResponse(stdout, string(res.Decision), res.Reason)
 }
 
 func runOpenCodeAdapter(rs Ruleset, stdin io.Reader, stdout io.Writer) error {
@@ -117,6 +117,6 @@ func runOpenCodeAdapter(rs Ruleset, stdin io.Reader, stdout io.Writer) error {
 		log.Fatalln("decode opencode command:", err)
 		return nil
 	}
-	res, reason := EvaluateCommand(rs, cmd)
-	return adapters.EncodeOpenCodeResponse(stdout, string(res.Decision), reason)
+	res := EvaluateCommand(rs, cmd)
+	return adapters.EncodeOpenCodeResponse(stdout, string(res.Decision), res.Reason)
 }
