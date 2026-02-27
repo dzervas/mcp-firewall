@@ -6,6 +6,28 @@ import (
 	"io"
 )
 
+// Add in global and/or project-specific settings (`.claude/settings.json`):
+// ```json
+// {
+//   "hooks": {
+//     "PreToolUse": [
+//       {
+//         "matcher": "",
+//         "hooks": [
+//           {
+//             "type": "command",
+//             "command": "pretooluse-jsonnet claude"
+//           }
+//         ]
+//       }
+//     ]
+//   }
+// }
+// ```
+//
+// Test with:
+// echo '{"cwd": "/home/dzervas/Lab", "tool_name": "Bash", "tool_input": {"command":"echo hello world"}}' | go run . claude
+
 type ClaudeRequest struct {
 	ToolName  string         `json:"tool_name"`
 	ToolInput map[string]any `json:"tool_input"`
