@@ -7,12 +7,28 @@ import (
 )
 
 type ClaudeRequest struct {
+	ToolName  string         `json:"tool_name"`
 	ToolInput map[string]any `json:"tool_input"`
 }
 
 type ClaudeResponse struct {
-	Decision string `json:"decision"`
-	Reason   string `json:"reason"`
+	HookOutput ClaudeHookSpecificOutput `json:"hookSpecificOutput"`
+}
+
+func NewClaudeResponse(decision, reason string) ClaudeResponse {
+	return ClaudeResponse{
+		HookOutput: ClaudeHookSpecificOutput{
+			Name:     "PreToolUse",
+			Decision: decision,
+			Reason:   reason,
+		},
+	}
+}
+
+type ClaudeHookSpecificOutput struct {
+	Name     string `json:"hookEventName"`
+	Decision string `json:"permissionDecision"`
+	Reason   string `json:"permissionDecisionReason"`
 }
 
 func DecodeClaudeCommand(r io.Reader) (string, error) {
@@ -28,5 +44,5 @@ func DecodeClaudeCommand(r io.Reader) (string, error) {
 }
 
 func EncodeClaudeResponse(w io.Writer, decision, reason string) error {
-	return json.NewEncoder(w).Encode(ClaudeResponse{Decision: decision, Reason: reason})
+	return json.NewEncoder(w).Encode(NewClaudeResponse(decision, reason))
 }

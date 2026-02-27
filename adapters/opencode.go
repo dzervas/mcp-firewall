@@ -6,6 +6,25 @@ import (
 	"io"
 )
 
+// Add in global and/or project-specific settings (`.claude/settings.json`):
+// ```json
+// {
+//   "hooks": {
+//     "PreToolUse": [
+//       {
+//         "matcher": "",
+//         "hooks": [
+//           {
+//             "type": "command",
+//             "command": "pretooluse-jsonnet claude"
+//           }
+//         ]
+//       }
+//     ]
+//   }
+// }
+// ```
+
 type OpenCodeRequest struct {
 	Command string `json:"command"`
 }
