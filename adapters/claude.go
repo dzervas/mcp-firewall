@@ -53,7 +53,9 @@ type ClaudeHookSpecificOutput struct {
 	Reason   string `json:"permissionDecisionReason"`
 }
 
-func DecodeClaudeCommand(r io.Reader) (string, error) {
+type ClaudeAdapter struct{}
+
+func (a *ClaudeAdapter) DecodeRequest(r io.Reader) (string, error) {
 	var req ClaudeRequest
 	if err := json.NewDecoder(r).Decode(&req); err != nil {
 		return "", fmt.Errorf("claude input JSON invalid: %w", err)
@@ -65,6 +67,6 @@ func DecodeClaudeCommand(r io.Reader) (string, error) {
 	return cmd, nil
 }
 
-func EncodeClaudeResponse(w io.Writer, decision, reason string) error {
+func (a *ClaudeAdapter) EncodeResponse(w io.Writer, decision, reason string) error {
 	return json.NewEncoder(w).Encode(NewClaudeResponse(decision, reason))
 }

@@ -22,7 +22,9 @@ type CopilotResponse struct {
 	Reason   string `json:"permissionDecisionReason"`
 }
 
-func DecodeCopilotCommand(r io.Reader) (string, error) {
+type CopilotAdapter struct{}
+
+func (a *CopilotAdapter) DecodeRequest(r io.Reader) (string, error) {
 	var req CopilotRequest
 	if err := json.NewDecoder(r).Decode(&req); err != nil {
 		return "", fmt.Errorf("copilot input JSON invalid: %w", err)
@@ -39,6 +41,6 @@ func DecodeCopilotCommand(r io.Reader) (string, error) {
 	return toolArgs.Command, nil
 }
 
-func EncodeCopilotResponse(w io.Writer, decision, reason string) error {
+func (a *CopilotAdapter) EncodeResponse(w io.Writer, decision, reason string) error {
 	return json.NewEncoder(w).Encode(CopilotResponse{Decision: decision, Reason: reason})
 }

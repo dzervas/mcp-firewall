@@ -37,8 +37,10 @@ type OpenCodeResponse struct {
 // 	};
 // };
 
+type OpenCodeAdapter struct{}
+
 // Base64 encode the input (from the plugin side) to avoid escape issues
-func DecodeOpenCodeCommand(r io.Reader) (string, error) {
+func (a *OpenCodeAdapter) DecodeRequest(r io.Reader) (string, error) {
 	panic("OpenCode is not yet supported - plugin hooks can be bypassed by subagents (https://github.com/anomalyco/opencode/issues/5894) and there's no way to return an 'ask' response (force the UI to ask you for permission) ")
 
 	// var req OpenCodeRequest
@@ -52,6 +54,6 @@ func DecodeOpenCodeCommand(r io.Reader) (string, error) {
 	// return req.Args.Command, nil
 }
 
-func EncodeOpenCodeResponse(w io.Writer, decision, reason string) error {
+func (a *OpenCodeAdapter) EncodeResponse(w io.Writer, decision, reason string) error {
 	return json.NewEncoder(w).Encode(OpenCodeResponse{Decision: decision, Reason: reason})
 }
