@@ -4,15 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 )
 
 type CopilotRequest struct {
-	ToolInput map[string]any `json:"toolInput"`
+	Name string `json:"toolName"`
+	Args string `json:"toolArgs"`
+}
+
+type CopilotToolArgs struct {
+	Command     string `json:"command"`
+	Description string `json:"description"`
 }
 
 type CopilotResponse struct {
-	PermissionDecision       string `json:"permissionDecision"`
-	PermissionDecisionReason string `json:"permissionDecisionReason"`
+	Decision string `json:"permissionDecision"`
+	Reason   string `json:"permissionDecisionReason"`
 }
 
 func DecodeCopilotCommand(r io.Reader) (string, error) {
@@ -20,13 +27,18 @@ func DecodeCopilotCommand(r io.Reader) (string, error) {
 	if err := json.NewDecoder(r).Decode(&req); err != nil {
 		return "", fmt.Errorf("copilot input JSON invalid: %w", err)
 	}
-	cmd, _ := req.ToolInput["command"].(string)
-	if cmd == "" {
+
+	var toolArgs CopilotToolArgs
+	if err := json.NewDecoder(strings.NewReader(req.Args)).Decode(&toolArgs); err != nil {
+		return "", fmt.Errorf("copilot toolInput JSON invalid: %w", err)
+	}
+
+	if toolArgs.Command == "" {
 		return "", fmt.Errorf("copilot input missing toolInput.command")
 	}
-	return cmd, nil
+	return toolArgs.Command, nil
 }
 
 func EncodeCopilotResponse(w io.Writer, decision, reason string) error {
-	return json.NewEncoder(w).Encode(CopilotResponse{PermissionDecision: decision, PermissionDecisionReason: reason})
+	return json.NewEncoder(w).Encode(CopilotResponse{Decision: decision, Reason: reason})
 }
