@@ -1,6 +1,6 @@
 module github.com/dzervas/pretooluse-jsonnet
 
-go 1.25.5
+go 1.25
 
 require github.com/google/go-jsonnet v0.21.0
 
