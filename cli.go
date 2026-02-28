@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -50,7 +49,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 
 	switch args[0] {
 	case "dump":
-		b, err := dumpRulesetJSON(rs)
+		b, err := rs.DumpRulesetJSON()
 		if err != nil {
 			return err
 		}
@@ -62,15 +61,17 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		}
 
 		command := strings.Join(args[1:], " ")
-		result := EvaluateCommand(rs, command)
+		result := rs.EvaluateCommand(command)
 		if _, err := fmt.Fprintln(stdout, result.Decision); err != nil {
 			return err
 		}
-		fmt.Println("reason:", result.Reason)
-		if result.Match != nil {
-			_, err = fmt.Fprintf(stderr, "rule=%s decision=%s pattern=%s segment=%s\n", result.Match.Rule, result.Match.Decision, result.Match.Pattern, result.Match.Segment)
-		} else {
-			_, err = fmt.Fprintln(stderr, "rule=<none>")
+		log.Println("reason:", result.Reason)
+		if len(result.Matches) == 0 {
+			log.Println("no matching rules")
+		}
+
+		for i, m := range result.Matches {
+			log.Printf("match %d: rule=%s decision=%s pattern=%s segment=%s\n", i+1, m.RuleName, m.Decision, m.Pattern, m.Segment)
 		}
 		return err
 	case "claude":
@@ -83,9 +84,4 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		log.Fatalln("Unknown subcommand:", args[0])
 		return nil
 	}
-}
-
-func dumpRulesetJSON(rs Ruleset) ([]byte, error) {
-	result, err := json.MarshalIndent(rs, "", "  ")
-	return result, err
 }

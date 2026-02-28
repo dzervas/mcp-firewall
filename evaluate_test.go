@@ -20,12 +20,12 @@ func TestPrecedenceAndOrder(t *testing.T) {
 		{Name: "b", Ask: []string{"kubectl get secrets"}},
 		{Name: "c", Deny: []string{"kubectl get secret.*"}},
 	}}
-	res := EvaluateCommand(rs, "kubectl get secrets")
+	res := rs.EvaluateCommand("kubectl get secrets")
 	if res.Decision != DecisionDeny {
 		t.Fatalf("want deny got %s", res.Decision)
 	}
-	if res.Match == nil || res.Match.Rule != "c" {
-		t.Fatalf("unexpected match: %+v", res.Match)
+	if len(res.Matches) != 1 || res.Matches[0].RuleName != "c" {
+		t.Fatalf("unexpected match: %+v", res.Matches)
 	}
 }
 
@@ -34,7 +34,7 @@ func TestWorstAcrossSegments(t *testing.T) {
 		{Name: "allow", Allow: []string{"echo .*"}},
 		{Name: "ask", Ask: []string{"kubectl get secrets"}},
 	}}
-	res := EvaluateCommand(rs, "echo hi && kubectl get secrets")
+	res := rs.EvaluateCommand("echo hi && kubectl get secrets")
 	if res.Decision != DecisionAsk {
 		t.Fatalf("want ask got %s", res.Decision)
 	}
@@ -42,8 +42,8 @@ func TestWorstAcrossSegments(t *testing.T) {
 
 func TestPrefixAnchoring(t *testing.T) {
 	rs := Ruleset{Rules: []Rule{{Name: "r", Allow: []string{"kubectl get .*"}}}}
-	res := EvaluateCommand(rs, "please kubectl get pods")
-	if res.Decision != DecisionAsk || res.Match != nil {
+	res := rs.EvaluateCommand("please kubectl get pods")
+	if res.Decision != DecisionAsk || len(res.Matches) != 0 {
 		t.Fatalf("expected no match and default ask, got %+v", res)
 	}
 }

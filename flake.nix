@@ -39,6 +39,7 @@
             packages = with pkgs; [
               go
               gopls
+              gotools
               jsonnet
             ];
           };
