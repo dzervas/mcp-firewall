@@ -5,6 +5,33 @@ import (
 	"testing"
 )
 
+// TODO: Define many test cases
+// type Case struct {
+// 	ruleset  Ruleset
+// 	commands []CaseCommand
+// }
+
+// type CaseCommand struct {
+// 	command  string
+// 	decision Decision
+// }
+
+// var cases = []Case{
+// 	{
+// 		ruleset: Ruleset{Rules: []Rule{{
+// 			Name:  "single",
+// 			Allow: []string{"echo "},
+// 			Ask:   []string{"kubectl get secrets"},
+// 			Deny:  []string{"rm "},
+// 		}}},
+// 		commands: []CaseCommand{
+// 			CaseCommand{"echo hi", DecisionAllow},
+// 			CaseCommand{"kubectl get secrets", DecisionAsk},
+// 			CaseCommand{"rm -rf /tmp/x", DecisionDeny},
+// 		},
+// 	},
+// }
+
 func TestSplitCommands(t *testing.T) {
 	in := "echo hi; ls -la && kubectl get pods || cat f | grep x & sleep 1"
 	got := SplitCommandToSegments(in)

@@ -7,11 +7,6 @@ import (
 	"regexp"
 )
 
-const (
-	envConfigDir = "PRETOOLUSE_CONFIG_DIR"
-	envRuleset   = "PRETOOLUSE_RULESET"
-)
-
 // Rule is the internal per-rule representation.
 type Rule struct {
 	Name  string   `json:"-"`
@@ -79,7 +74,7 @@ func (rs Ruleset) EvaluateCommand(command string) EvalResult {
 // Find the strictest (deny > ask > allow) matching rule for the given segment.
 func (rs Ruleset) EvaluateSegment(segment string) *Match {
 	for _, dec := range []Decision{DecisionDeny, DecisionAsk, DecisionAllow} {
-		if m := rs.firstMatch(segment, dec); m != nil {
+		if m := rs.FindSegmentMatch(segment, dec); m != nil {
 			return m
 		}
 	}
@@ -87,7 +82,8 @@ func (rs Ruleset) EvaluateSegment(segment string) *Match {
 	return nil
 }
 
-func (rs Ruleset) firstMatch(segment string, d Decision) *Match {
+// Given a segment and a specific decision (allow, ask, deny), find the first matching rule and return the match details.
+func (rs Ruleset) FindSegmentMatch(segment string, d Decision) *Match {
 	for _, rule := range rs.Rules {
 		var patterns []string
 

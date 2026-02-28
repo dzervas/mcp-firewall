@@ -14,13 +14,18 @@ import (
 	jsonnet "github.com/google/go-jsonnet"
 )
 
+const (
+	envConfigDir = "PRETOOLUSE_CONFIG_DIR"
+	envRuleset   = "PRETOOLUSE_RULESET"
+)
+
 type configError struct {
 	msg string
 }
 
 func (e configError) Error() string { return e.msg }
 
-func defaultConfigDir() string {
+func DefaultConfigDir() string {
 	if v := strings.TrimSpace(os.Getenv(envConfigDir)); v != "" {
 		return v
 	}
@@ -76,7 +81,7 @@ func gitRoot(cwd string) (string, error) {
 }
 
 func loadRuleset(cwd string) (Ruleset, error) {
-	cfgDir := defaultConfigDir()
+	cfgDir := DefaultConfigDir()
 
 	globalPath := filepath.Join(cfgDir, "config.jsonnet")
 	projectPath := resolveProjectRuleset(cwd)
