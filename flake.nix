@@ -19,13 +19,27 @@
         let
           pkgs = nixpkgsFor.${system};
         in
-        {
-          mcp-firewall = pkgs.buildGoModule {
+        rec {
+          mcp-firewall = pkgs.buildGoModule rec {
             pname = "mcp-firewall";
             version = "0.1.0";
             src = ./.;
-            vendorHash = nixpkgs.lib.fakeHash;
+            vendorHash = "sha256-vvsSHF7UiPtxjCXsnpD8D2rVqQNakfo0Oqw7wPVsYCM=";
+            subPackages = [ "./cmd" ];
+            # CGO_ENABLED = 0;
+            ldflags = [
+              "-extldflags"
+              "-static"
+              "-s -w"
+              "-X main.builtBy=nix-flake"
+              "-X main.Version=${version}"
+            ];
+            postInstall = ''
+              mv "$out/bin/cmd" "$out/bin/mcp-firewall"
+            '';
+            meta.mainProgram = "mcp-firewall";
           };
+          default = mcp-firewall;
         }
       );
 
