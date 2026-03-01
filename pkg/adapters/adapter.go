@@ -1,8 +1,10 @@
-package main
+package adapters
 
 import (
 	"io"
 	"log"
+
+	"github.com/dzervas/mcp-firewall/pkg/engine"
 )
 
 // The "wrapper" to interface the command evaluation results to a specific agent
@@ -12,7 +14,7 @@ type Adapter interface {
 }
 
 // Evaluate the provided input against the adapter, evaluate any matching commands and return the result to stdout
-func RunAdapter(adapter Adapter, rs Ruleset, stdin io.Reader, stdout io.Writer) error {
+func RunAdapter(adapter Adapter, rs engine.Ruleset, stdin io.Reader, stdout io.Writer) error {
 	cmd, err := adapter.DecodeRequest(stdin)
 	if err != nil {
 		log.Fatalln("decode command:", err)

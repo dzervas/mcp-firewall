@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dzervas/mcp-firewall/adapters"
+	"github.com/dzervas/mcp-firewall/pkg/adapters"
 )
 
 type cliError struct {
@@ -75,11 +75,11 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		}
 		return err
 	case "claude":
-		return RunAdapter(&adapters.ClaudeAdapter{}, rs, stdin, stdout)
+		return adapters.RunAdapter(&adapters.ClaudeAdapter{}, rs, stdin, stdout)
 	case "copilot":
-		return RunAdapter(&adapters.CopilotAdapter{}, rs, stdin, stdout)
+		return adapters.RunAdapter(&adapters.CopilotAdapter{}, rs, stdin, stdout)
 	case "opencode":
-		return RunAdapter(&adapters.OpenCodeAdapter{}, rs, stdin, stdout)
+		return adapters.RunAdapter(&adapters.OpenCodeAdapter{}, rs, stdin, stdout)
 	default:
 		log.Fatalln("Unknown subcommand:", args[0])
 		return nil

@@ -1,0 +1,65 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: mcp-firewall
+    skip: false
+    dir: ./cmd
+    command: build
+    binary: mcp-firewall
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    goarm:
+      - "7"
+
+    flags: ["-trimpath"]
+
+    ldflags:
+      - -extldflags
+      - "-static"
+      - -s -w
+      - -X main.CommitHash={{.Commit}}
+      - -X main.BuildDate={{.Date}}
+      - -X main.builtBy=goreleaser
+      - -X main.Version={{.Version}}
+
+    mod_timestamp: "{{.CommitTimestamp}}"
+
+archives:
+  - formats: [tar.gz]
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+release:
+  header: >-
+    ## Release: `{{ .Tag }}` is here 🚀🚀🚀
+
+    This is the release `{{ .Tag }}` of the MCP-Firewall, the rule engine for agents.
+
+    ---

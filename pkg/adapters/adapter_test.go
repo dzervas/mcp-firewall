@@ -1,4 +1,4 @@
-package main
+package adapters
 
 import (
 	"bytes"
@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dzervas/mcp-firewall/adapters"
+	"github.com/dzervas/mcp-firewall/pkg/engine"
 )
 
-func testAdapter(t *testing.T, adapter Adapter, ruleset Ruleset, input string) map[string]any {
+func testAdapter(t *testing.T, adapter Adapter, ruleset engine.Ruleset, input string) map[string]any {
 	in := strings.NewReader(input)
 	var out bytes.Buffer
 	if err := RunAdapter(adapter, ruleset, in, &out); err != nil {
@@ -24,9 +24,9 @@ func testAdapter(t *testing.T, adapter Adapter, ruleset Ruleset, input string) m
 }
 
 func TestClaudeAdapter(t *testing.T) {
-	ruleset := Ruleset{Rules: []Rule{{Name: "d", Deny: []string{"rm .*"}}}}
+	ruleset := engine.Ruleset{Rules: []engine.Rule{{Name: "d", Deny: []string{"rm .*"}}}}
 	input := `{"tool_input":{"command":"rm -rf /tmp/x"}}`
-	out := testAdapter(t, &adapters.ClaudeAdapter{}, ruleset, input)
+	out := testAdapter(t, &ClaudeAdapter{}, ruleset, input)
 
 	if (out["hookSpecificOutput"].(map[string]any))["permissionDecision"] != "deny" {
 		t.Fatalf("unexpected response: %v", out)
@@ -34,9 +34,9 @@ func TestClaudeAdapter(t *testing.T) {
 }
 
 func TestCopilotAdapter(t *testing.T) {
-	ruleset := Ruleset{Rules: []Rule{{Name: "d", Deny: []string{"rm .*"}}}}
+	ruleset := engine.Ruleset{Rules: []engine.Rule{{Name: "d", Deny: []string{"rm .*"}}}}
 	input := `{"toolArgs":"{\"command\":\"rm -rf /tmp/x\"}"}`
-	out := testAdapter(t, &adapters.CopilotAdapter{}, ruleset, input)
+	out := testAdapter(t, &CopilotAdapter{}, ruleset, input)
 
 	if out["permissionDecision"] != "deny" {
 		t.Fatalf("unexpected response: %v", out)

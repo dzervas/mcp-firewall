@@ -1,10 +1,11 @@
-package main
+package engine
 
 import (
 	"encoding/json"
 	"fmt"
 	"log"
 	"regexp"
+	"strings"
 )
 
 // Rule is the internal per-rule representation.
@@ -111,4 +112,11 @@ func (rs Ruleset) FindSegmentMatch(segment string, d Decision) *Match {
 func (rs Ruleset) DumpRulesetJSON() ([]byte, error) {
 	result, err := json.MarshalIndent(rs, "", "  ")
 	return result, err
+}
+
+func anchorRegex(p string) string {
+	if strings.HasPrefix(p, "^") {
+		return p
+	}
+	return "^" + p
 }

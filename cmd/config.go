@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/dzervas/mcp-firewall/pkg/engine"
 	jsonnet "github.com/google/go-jsonnet"
 )
 
@@ -79,7 +80,7 @@ func gitRoot(cwd string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func LoadAllRulesets(cwd string) (Ruleset, error) {
+func LoadAllRulesets(cwd string) (engine.Ruleset, error) {
 	cfgDir := GlobalConfigDir()
 
 	globalPath := filepath.Join(cfgDir, globalRulesetFile)
@@ -88,27 +89,27 @@ func LoadAllRulesets(cwd string) (Ruleset, error) {
 	globalRules, err := LoadRuleMap(globalPath, cfgDir)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			return Ruleset{}, err
+			return engine.Ruleset{}, err
 		}
-		globalRules = []Rule{}
+		globalRules = []engine.Rule{}
 	}
 
-	projectRules := []Rule{}
+	projectRules := []engine.Rule{}
 	if projectPath != "" {
 		projectRules, err = LoadRuleMap(projectPath, cfgDir)
 		if err != nil {
-			return Ruleset{}, err
+			return engine.Ruleset{}, err
 		}
 	}
 
-	merged := Ruleset{Rules: append(globalRules, projectRules...)}
+	merged := engine.Ruleset{Rules: append(globalRules, projectRules...)}
 	if len(merged.Rules) == 0 {
-		return Ruleset{}, fmt.Errorf("no rulesets found in global path %q or project path %q", globalPath, projectPath)
+		return engine.Ruleset{}, fmt.Errorf("no rulesets found in global path %q or project path %q", globalPath, projectPath)
 	}
 	return merged, nil
 }
 
-func LoadRuleMap(path, cfgDir string) ([]Rule, error) {
+func LoadRuleMap(path, cfgDir string) ([]engine.Rule, error) {
 	st, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -135,8 +136,8 @@ func LoadRuleMap(path, cfgDir string) ([]Rule, error) {
 	return rules, err
 }
 
-func DecodeRuleMap(raw string) ([]Rule, error) {
-	var result []Rule
+func DecodeRuleMap(raw string) ([]engine.Rule, error) {
+	var result []engine.Rule
 
 	decoder := json.NewDecoder(strings.NewReader(raw))
 	decoder.DisallowUnknownFields()
@@ -166,23 +167,16 @@ func DecodeRuleMap(raw string) ([]Rule, error) {
 	return result, nil
 }
 
-func anchorRegex(p string) string {
-	if strings.HasPrefix(p, "^") {
-		return p
-	}
-	return "^" + p
-}
-
-func mergeRules(global map[string]Rule, project map[string]Rule) Ruleset {
-	out := make(map[string]Rule, len(global)+len(project))
+func mergeRules(global map[string]engine.Rule, project map[string]engine.Rule) engine.Ruleset {
+	out := make(map[string]engine.Rule, len(global)+len(project))
 
 	maps.Copy(out, global)
 	maps.Copy(out, project)
 
-	outList := make([]Rule, 0, len(out))
+	outList := make([]engine.Rule, 0, len(out))
 	for _, rule := range out {
 		outList = append(outList, rule)
 	}
 
-	return Ruleset{Rules: outList}
+	return engine.Ruleset{Rules: outList}
 }

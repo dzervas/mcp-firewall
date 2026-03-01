@@ -23,3 +23,5 @@
 
 # End of https://www.toptal.com/developers/gitignore/api/go
 mcp-firewall
+# Added by goreleaser init:
+dist/
