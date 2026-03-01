@@ -90,10 +90,10 @@ func LoadAllRulesets(cwd string) (Ruleset, error) {
 		if !errors.Is(err, os.ErrNotExist) {
 			return Ruleset{}, err
 		}
-		globalRules = map[string]Rule{}
+		globalRules = []Rule{}
 	}
 
-	projectRules := map[string]Rule{}
+	projectRules := []Rule{}
 	if projectPath != "" {
 		projectRules, err = LoadRuleMap(projectPath, cfgDir)
 		if err != nil {
@@ -101,14 +101,14 @@ func LoadAllRulesets(cwd string) (Ruleset, error) {
 		}
 	}
 
-	merged := mergeRules(globalRules, projectRules)
+	merged := Ruleset{Rules: append(globalRules, projectRules...)}
 	if len(merged.Rules) == 0 {
-		return Ruleset{}, configError{msg: "no rules found (neither global config.jsonnet nor project .pretooluse.jsonnet produced rules)"}
+		return Ruleset{}, fmt.Errorf("no rulesets found in global path %q or project path %q", globalPath, projectPath)
 	}
 	return merged, nil
 }
 
-func LoadRuleMap(path, cfgDir string) (map[string]Rule, error) {
+func LoadRuleMap(path, cfgDir string) ([]Rule, error) {
 	st, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -135,8 +135,8 @@ func LoadRuleMap(path, cfgDir string) (map[string]Rule, error) {
 	return rules, err
 }
 
-func DecodeRuleMap(raw string) (map[string]Rule, error) {
-	var result map[string]Rule
+func DecodeRuleMap(raw string) ([]Rule, error) {
+	var result []Rule
 
 	decoder := json.NewDecoder(strings.NewReader(raw))
 	decoder.DisallowUnknownFields()
@@ -144,8 +144,8 @@ func DecodeRuleMap(raw string) (map[string]Rule, error) {
 		return nil, fmt.Errorf("decode ruleset JSON: %v", err)
 	}
 
+	// Validate that all patterns are valid regexes
 	for name, rule := range result {
-		rule.Name = name
 		for _, p := range rule.Allow {
 			if _, err := regexp.Compile(p); err != nil {
 				return nil, fmt.Errorf("invalid regex in allow pattern %q of rule %q: %v", p, name, err)
@@ -161,7 +161,6 @@ func DecodeRuleMap(raw string) (map[string]Rule, error) {
 				return nil, fmt.Errorf("invalid regex in allow pattern %q of rule %q: %v", p, name, err)
 			}
 		}
-		result[name] = rule
 	}
 
 	return result, nil

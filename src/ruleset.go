@@ -9,7 +9,7 @@ import (
 
 // Rule is the internal per-rule representation.
 type Rule struct {
-	Name  string
+	Name  string   `json:"name"`
 	Allow []string `json:"allow"`
 	Ask   []string `json:"ask"`
 	Deny  []string `json:"deny"`
