@@ -2,7 +2,7 @@
   <img height="256px" src="./logo.png" />
 </p>
 
-# MCP FIREW🔒️LL
+# MCP-FIREW🔒️LL
 
 This is a small tool that sits between the agent and all tool use requests and is able
 to apply regex-based policies per folder, git repo and user.
@@ -89,11 +89,39 @@ Then all you have to do is write your first policy. Here's a good starting point
 
 ## Installation
 
-There are (currently) 3 ways to download and install mcp-firewall:
+To download and install mcp-firewall:
 
 - Download the latest compiled binary from the [releases](../../releases/latest)
-- Clone and build the project using `go build ./src`
-- Use the nix flake
+- Clone and build the project using `go build -o mcp-firewall ./cmd`
+- Just run it with `nix run git+https://github.com/dzervas/mcp-firewall` - no installation steps (not recommended)
+- Use the nix flake as input:
+
+<details><summary>NixOS/Home-Manager installation with flake</summary>
+
+`flake.nix`
+
+```nix
+{
+  inputs.mcp-firewall.url = "github:dzervas/mcp-firewall";
+  inputs.mcp-firewall.inputs.nixpkgs.follows = "nixpkgs";
+}
+```
+
+I'm going to assume that the input is in `speciaArgs` so that it's accessible from any module:
+
+`configuration.nix`
+
+```nix
+environment.systemPackages = [ inputs.mcp-firewall.packages.x86_64-linux.default ]
+```
+
+`home-manager.nix`
+
+```nix
+home.packages = [ inputs.mcp-firewall.packages.x86_64-linux.default ]
+```
+
+</details>
 
 More installation options are coming soon!
 
