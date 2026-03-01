@@ -9,7 +9,7 @@ import (
 
 // Rule is the internal per-rule representation.
 type Rule struct {
-	Name  string   `json:"-"`
+	Name  string
 	Allow []string `json:"allow"`
 	Ask   []string `json:"ask"`
 	Deny  []string `json:"deny"`
@@ -99,7 +99,7 @@ func (rs Ruleset) FindSegmentMatch(segment string, d Decision) *Match {
 		}
 
 		for _, p := range patterns {
-			re := regexp.MustCompile(anchorPattern(p))
+			re := regexp.MustCompile(anchorRegex(p))
 			if re.MatchString(segment) {
 				return &Match{RuleName: rule.Name, Pattern: p, Decision: d, Segment: segment}
 			}

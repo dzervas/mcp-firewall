@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,8 +16,10 @@ import (
 )
 
 const (
-	envConfigDir = "PRETOOLUSE_CONFIG_DIR"
-	envRuleset   = "PRETOOLUSE_RULESET"
+	envConfigDir       = "PRETOOLUSE_CONFIG_DIR"
+	envRuleset         = "PRETOOLUSE_RULESET"
+	projectRulesetFile = ".pretooluse.jsonnet"
+	globalRulesetFile  = "config.jsonnet"
 )
 
 type configError struct {
@@ -25,10 +28,12 @@ type configError struct {
 
 func (e configError) Error() string { return e.msg }
 
-func DefaultConfigDir() string {
-	if v := strings.TrimSpace(os.Getenv(envConfigDir)); v != "" {
-		return v
+func GlobalConfigDir() string {
+	configDirOverride := strings.TrimSpace(os.Getenv(envConfigDir))
+	if configDirOverride != "" {
+		return configDirOverride
 	}
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatalln("Could not find the user's home directory:", err)
@@ -37,36 +42,30 @@ func DefaultConfigDir() string {
 	return filepath.Join(home, ".config", "pretooluse")
 }
 
-func resolveProjectRuleset(cwd string) string {
-	if v := strings.TrimSpace(os.Getenv(envRuleset)); v != "" {
-		st, err := os.Stat(v)
-		if err != nil {
-			log.Fatalln("Ruleset override", v, "not readable:", err)
-			return ""
-		}
-		if st.IsDir() {
-			p := filepath.Join(v, ".pretooluse.jsonnet")
-			if _, err := os.Stat(p); err != nil {
-				log.Fatalln("Ruleset override dir", v, "missing .pretooluse.jsonnet:", err)
-				return ""
-			}
-			return p
-		}
-		return v
+// Get the efftive path of the project's ruleset in the following lookup order:
+// 1. PRETOOLUSE_RULESET env var path
+// 2. .pretooluse.jsonnet in the current working directory
+// 3. .pretooluse.jsonnet in the git root of the current working directory
+// If none of the above exist, returns an empty string.
+func ResolveProjectRuleset(cwd string) string {
+	projectRulesetOverride := strings.TrimSpace(os.Getenv(envRuleset))
+	if projectRulesetOverride != "" {
+		return projectRulesetOverride
 	}
 
-	local := filepath.Join(cwd, ".pretooluse.jsonnet")
+	local := filepath.Join(cwd, projectRulesetFile)
 	if _, err := os.Stat(local); err == nil {
 		return local
 	}
 
 	root, err := gitRoot(cwd)
 	if err == nil && root != "" {
-		candidate := filepath.Join(root, ".pretooluse.jsonnet")
+		candidate := filepath.Join(root, projectRulesetFile)
 		if _, err := os.Stat(candidate); err == nil {
 			return candidate
 		}
 	}
+
 	return ""
 }
 
@@ -80,44 +79,42 @@ func gitRoot(cwd string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func loadRuleset(cwd string) (Ruleset, error) {
-	cfgDir := DefaultConfigDir()
+func LoadAllRulesets(cwd string) (Ruleset, error) {
+	cfgDir := GlobalConfigDir()
 
-	globalPath := filepath.Join(cfgDir, "config.jsonnet")
-	projectPath := resolveProjectRuleset(cwd)
+	globalPath := filepath.Join(cfgDir, globalRulesetFile)
+	projectPath := ResolveProjectRuleset(cwd)
 
-	globalRules, globalOrder, err := loadRuleMap(globalPath, cfgDir)
+	globalRules, err := LoadRuleMap(globalPath, cfgDir)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return Ruleset{}, err
 		}
 		globalRules = map[string]Rule{}
-		globalOrder = nil
 	}
 
 	projectRules := map[string]Rule{}
-	var projectOrder []string
 	if projectPath != "" {
-		projectRules, projectOrder, err = loadRuleMap(projectPath, cfgDir)
+		projectRules, err = LoadRuleMap(projectPath, cfgDir)
 		if err != nil {
 			return Ruleset{}, err
 		}
 	}
 
-	merged := mergeRules(globalRules, globalOrder, projectRules, projectOrder)
+	merged := mergeRules(globalRules, projectRules)
 	if len(merged.Rules) == 0 {
 		return Ruleset{}, configError{msg: "no rules found (neither global config.jsonnet nor project .pretooluse.jsonnet produced rules)"}
 	}
 	return merged, nil
 }
 
-func loadRuleMap(path, cfgDir string) (map[string]Rule, []string, error) {
+func LoadRuleMap(path, cfgDir string) (map[string]Rule, error) {
 	st, err := os.Stat(path)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if st.IsDir() {
-		return nil, nil, configError{msg: fmt.Sprintf("ruleset path %q is a directory", path)}
+		return nil, fmt.Errorf("ruleset path %q is a directory", path)
 	}
 
 	vm := jsonnet.MakeVM()
@@ -126,190 +123,67 @@ func loadRuleMap(path, cfgDir string) (map[string]Rule, []string, error) {
 			filepath.Join(cfgDir, "lib"),
 			filepath.Join(cfgDir, "vendor"),
 			filepath.Dir(path),
-			".",
 		},
 	})
 
 	out, err := vm.EvaluateFile(path)
 	if err != nil {
-		return nil, nil, configError{msg: fmt.Sprintf("evaluate %s: %v", path, err)}
+		return nil, fmt.Errorf("evaluate %s: %v", path, err)
 	}
 
-	rules, order, err := decodeOrderedRules(out)
-	if err != nil {
-		return nil, nil, configError{msg: fmt.Sprintf("decode %s: %v", path, err)}
-	}
-	for _, name := range order {
-		if err := validateRule(rules[name]); err != nil {
-			return nil, nil, configError{msg: fmt.Sprintf("invalid rule %q in %s: %v", name, path, err)}
-		}
-	}
-	return rules, order, nil
+	rules, err := DecodeRuleMap(out)
+	return rules, err
 }
 
-func decodeOrderedRules(raw string) (map[string]Rule, []string, error) {
-	dec := json.NewDecoder(strings.NewReader(raw))
-	tok, err := dec.Token()
-	if err != nil {
-		return nil, nil, err
-	}
-	delim, ok := tok.(json.Delim)
-	if !ok || delim != '{' {
-		return nil, nil, errors.New("top-level must be object")
+func DecodeRuleMap(raw string) (map[string]Rule, error) {
+	var result map[string]Rule
+
+	decoder := json.NewDecoder(strings.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode ruleset JSON: %v", err)
 	}
 
-	rules := map[string]Rule{}
-	order := []string{}
-	for dec.More() {
-		tok, err := dec.Token()
-		if err != nil {
-			return nil, nil, err
-		}
-		name, ok := tok.(string)
-		if !ok {
-			return nil, nil, errors.New("rule key must be string")
-		}
-		name = strings.TrimSpace(name)
-		if name == "" {
-			return nil, nil, errors.New("rule name cannot be empty")
-		}
-		if _, exists := rules[name]; exists {
-			return nil, nil, fmt.Errorf("duplicate rule name %q", name)
-		}
-
-		var obj map[string]json.RawMessage
-		if err := dec.Decode(&obj); err != nil {
-			return nil, nil, fmt.Errorf("rule %q must be object: %w", name, err)
-		}
-		r, err := decodeRule(name, obj)
-		if err != nil {
-			return nil, nil, err
-		}
-		rules[name] = r
-		order = append(order, name)
-	}
-
-	tok, err = dec.Token()
-	if err != nil {
-		return nil, nil, err
-	}
-	delim, ok = tok.(json.Delim)
-	if !ok || delim != '}' {
-		return nil, nil, errors.New("top-level object not closed")
-	}
-	return rules, order, nil
-}
-
-func decodeRule(name string, obj map[string]json.RawMessage) (Rule, error) {
-	r := Rule{Name: name, Allow: []string{}, Ask: []string{}, Deny: []string{}}
-	for k, v := range obj {
-		switch k {
-		case "allow":
-			if err := json.Unmarshal(v, &r.Allow); err != nil {
-				return Rule{}, fmt.Errorf("rule %q allow must be array of strings", name)
+	for name, rule := range result {
+		rule.Name = name
+		for _, p := range rule.Allow {
+			if _, err := regexp.Compile(p); err != nil {
+				return nil, fmt.Errorf("invalid regex in allow pattern %q of rule %q: %v", p, name, err)
 			}
-		case "ask":
-			if err := json.Unmarshal(v, &r.Ask); err != nil {
-				return Rule{}, fmt.Errorf("rule %q ask must be array of strings", name)
+		}
+		for _, p := range rule.Ask {
+			if _, err := regexp.Compile(p); err != nil {
+				return nil, fmt.Errorf("invalid regex in allow pattern %q of rule %q: %v", p, name, err)
 			}
-		case "deny":
-			if err := json.Unmarshal(v, &r.Deny); err != nil {
-				return Rule{}, fmt.Errorf("rule %q deny must be array of strings", name)
+		}
+		for _, p := range rule.Deny {
+			if _, err := regexp.Compile(p); err != nil {
+				return nil, fmt.Errorf("invalid regex in allow pattern %q of rule %q: %v", p, name, err)
 			}
-		default:
-			return Rule{}, fmt.Errorf("rule %q has unknown field %q", name, k)
 		}
+		result[name] = rule
 	}
-	r.Allow = ensureStringSlice(r.Allow)
-	r.Ask = ensureStringSlice(r.Ask)
-	r.Deny = ensureStringSlice(r.Deny)
-	return r, nil
+
+	return result, nil
 }
 
-func ensureStringSlice(v []string) []string {
-	if v == nil {
-		return []string{}
-	}
-	return v
-}
-
-func validateRule(r Rule) error {
-	for _, p := range r.Allow {
-		if err := validatePattern(p); err != nil {
-			return fmt.Errorf("allow pattern %q: %w", p, err)
-		}
-	}
-	for _, p := range r.Ask {
-		if err := validatePattern(p); err != nil {
-			return fmt.Errorf("ask pattern %q: %w", p, err)
-		}
-	}
-	for _, p := range r.Deny {
-		if err := validatePattern(p); err != nil {
-			return fmt.Errorf("deny pattern %q: %w", p, err)
-		}
-	}
-	return nil
-}
-
-func validatePattern(p string) error {
-	if strings.TrimSpace(p) == "" {
-		return errors.New("cannot be empty")
-	}
-	_, err := regexp.Compile(anchorPattern(p))
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func anchorPattern(p string) string {
+func anchorRegex(p string) string {
 	if strings.HasPrefix(p, "^") {
 		return p
 	}
 	return "^" + p
 }
 
-func mergeRules(global map[string]Rule, globalOrder []string, project map[string]Rule, projectOrder []string) Ruleset {
-	seen := make(map[string]bool, len(global)+len(project))
-	out := make([]Rule, 0, len(global)+len(project))
+func mergeRules(global map[string]Rule, project map[string]Rule) Ruleset {
+	out := make(map[string]Rule, len(global)+len(project))
 
-	for _, n := range globalOrder {
-		r, ok := global[n]
-		if !ok {
-			continue
-		}
-		if pr, ok := project[n]; ok {
-			r = pr
-		}
-		out = append(out, r)
-		seen[n] = true
+	maps.Copy(out, global)
+	maps.Copy(out, project)
+
+	outList := make([]Rule, 0, len(out))
+	for _, rule := range out {
+		outList = append(outList, rule)
 	}
 
-	for _, n := range projectOrder {
-		if seen[n] {
-			continue
-		}
-		r, ok := project[n]
-		if !ok {
-			continue
-		}
-		out = append(out, r)
-		seen[n] = true
-	}
-
-	return Ruleset{Rules: out}
-}
-
-func (r Ruleset) AsMap() map[string]Rule {
-	out := make(map[string]Rule, len(r.Rules))
-	for _, rule := range r.Rules {
-		copyRule := Rule{
-			Allow: append([]string{}, rule.Allow...),
-			Ask:   append([]string{}, rule.Ask...),
-			Deny:  append([]string{}, rule.Deny...),
-		}
-		out[rule.Name] = copyRule
-	}
-	return out
+	return Ruleset{Rules: outList}
 }

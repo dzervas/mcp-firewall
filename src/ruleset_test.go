@@ -33,7 +33,7 @@ func TestLoadRulesetMergeAndOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rs, err := loadRuleset(cwd)
+	rs, err := LoadAllRulesets(cwd)
 	if err != nil {
 		t.Fatalf("loadRuleset error: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestLoadRulesetRejectUnknownField(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := loadRuleset(t.TempDir())
+	_, err := LoadAllRulesets(t.TempDir())
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -80,7 +80,7 @@ func TestLoadRulesetRejectInvalidRegex(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := loadRuleset(t.TempDir())
+	_, err := LoadAllRulesets(t.TempDir())
 	if err == nil {
 		t.Fatal("expected error")
 	}

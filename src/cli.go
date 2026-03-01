@@ -42,7 +42,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		return nil
 	}
 
-	rs, err := loadRuleset(cwd)
+	rs, err := LoadAllRulesets(cwd)
 	if err != nil {
 		return err
 	}
