@@ -25,3 +25,4 @@
 mcp-firewall
 # Added by goreleaser init:
 dist/
+.mcp-firewall.jsonnet
