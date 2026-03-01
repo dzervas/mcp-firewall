@@ -29,7 +29,7 @@ func TestLoadRulesetMerge(t *testing.T) {
   { "name": "shared", "allow": [], "ask": ["kubectl get secrets"], "deny": [] },
   { "name": "p1", "allow": ["ls .*"], "ask": [], "deny": [] }
 ]`
-	if err := os.WriteFile(filepath.Join(cwd, ".pretooluse.jsonnet"), []byte(project), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cwd, ".mcp-firewall.jsonnet"), []byte(project), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

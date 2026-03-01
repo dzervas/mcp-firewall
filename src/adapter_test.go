@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dzervas/pretooluse-jsonnet/adapters"
+	"github.com/dzervas/mcp-firewall/adapters"
 )
 
 func testAdapter(t *testing.T, adapter Adapter, ruleset Ruleset, input string) map[string]any {

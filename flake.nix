@@ -20,8 +20,8 @@
           pkgs = nixpkgsFor.${system};
         in
         {
-          pretooluse-jsonnet = pkgs.buildGoModule {
-            pname = "pretooluse-jsonnet";
+          mcp-firewall = pkgs.buildGoModule {
+            pname = "mcp-firewall";
             version = "0.1.0";
             src = ./.;
             vendorHash = nixpkgs.lib.fakeHash;

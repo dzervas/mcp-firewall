@@ -16,7 +16,7 @@ import (
 //         "hooks": [
 //           {
 //             "type": "command",
-//             "command": "pretooluse-jsonnet claude"
+//             "command": "mcp-firewall claude"
 //           }
 //         ]
 //       }

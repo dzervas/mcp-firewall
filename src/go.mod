@@ -1,4 +1,4 @@
-module github.com/dzervas/pretooluse-jsonnet
+module github.com/dzervas/mcp-firewall
 
 go 1.25
 

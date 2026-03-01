@@ -21,18 +21,18 @@ type OpenCodeResponse struct {
 
 // To test manually:
 // echo -n '{"args":{"command":"git status","description":"Shows working tree status"}}' | base64 | go run . opencode
-// plugin (.opencode/plugins/pretooluse-jsonnet.js):
-// export const PretoolusePlugin = async ({ $ }) => {
+// plugin (.opencode/plugins/mcp-firewall.js):
+// export const MCPFirewallPlugin = async ({ $ }) => {
 // 	return {
 // 		"tool.execute.before": async (_input, output) => {
 // 			const outputStr = JSON.stringify(output);
-// 			const proc = await $`echo -n '${btoa(outputStr)}' | /home/dzervas/Lab/pretooluse-jsonnet/pretooluse-jsonnet opencode`;
+// 			const proc = await $`echo -n '${btoa(outputStr)}' | /home/dzervas/Lab/mcp-firewall/mcp-firewall opencode`;
 // 			if (proc.status !== 0) {
-// 				throw new Error((proc.stderr || "pretooluse-jsonnet opencode failed").trim());
+// 				throw new Error((proc.stderr || "mcp-firewall opencode failed").trim());
 // 			}
 // 			const result = JSON.parse(proc.stdout || "{}");
 // 			if (result.decision === "allow") return;
-// 			throw new Error(result.reason || `pretooluse-jsonnet: ${result.decision || "deny"}`);
+// 			throw new Error(result.reason || `mcp-firewall: ${result.decision || "deny"}`);
 // 		},
 // 	};
 // };
