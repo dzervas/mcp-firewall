@@ -102,6 +102,6 @@ More installation options are coming soon!
 For users that want to expand a bit further and utilize jsonnet for shared rulesets across
 projects, here are some useful info:
 
-- The `lib` subdirectory of `~/.config/mcp-firewall` or the value of `$MCP_FIREWALL_CONFIG` can be used for libsonnet files
+- The `lib` subdirectory of `~/.config/mcp-firewall` or the value of `$MCP_FIREWALL_CONFIG_DIR` can be used for libsonnet files
 - The `vendor` subdirectory under the afformentioned directories can be used for vendored libraries (using jsonnet-bundler for example)
 - The used jsonnet implementation is go-jsonnet, you can see which version in [go.mod](./src/go.mod)

@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dzervas/pretooluse-jsonnet/adapters"
+	"github.com/dzervas/mcp-firewall/adapters"
 )
 
 type cliError struct {
@@ -32,7 +32,7 @@ func exitCode(err error) int {
 
 func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		log.Fatalln("usage: pretooluse <dump|test|claude|copilot|opencode>")
+		log.Fatalln("usage: mcp-firewall <test|claude|copilot|opencode>")
 		return nil
 	}
 
@@ -57,7 +57,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		return err
 	case "test":
 		if len(args) < 2 {
-			log.Fatalln("usage: pretooluse test <arg...>")
+			log.Fatalln("usage: mcp-firewall test <arg...>")
 		}
 
 		command := strings.Join(args[1:], " ")

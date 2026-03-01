@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	envConfigDir       = "PRETOOLUSE_CONFIG_DIR"
-	envRuleset         = "PRETOOLUSE_RULESET"
-	projectRulesetFile = ".pretooluse.jsonnet"
+	envConfigDir       = "MCP_FIREWALL_CONFIG_DIR"
+	envRuleset         = "MCP_FIREWALL_RULESET"
+	projectRulesetFile = ".mcp-firewall.jsonnet"
 	globalRulesetFile  = "config.jsonnet"
 )
 
@@ -39,13 +39,13 @@ func GlobalConfigDir() string {
 		log.Fatalln("Could not find the user's home directory:", err)
 		return ""
 	}
-	return filepath.Join(home, ".config", "pretooluse")
+	return filepath.Join(home, ".config", "mcp-firewall")
 }
 
 // Get the efftive path of the project's ruleset in the following lookup order:
-// 1. PRETOOLUSE_RULESET env var path
-// 2. .pretooluse.jsonnet in the current working directory
-// 3. .pretooluse.jsonnet in the git root of the current working directory
+// 1. MCP_FIREWALL_RULESET env var path
+// 2. .mcp-firewall.jsonnet in the current working directory
+// 3. .mcp-firewall.jsonnet in the git root of the current working directory
 // If none of the above exist, returns an empty string.
 func ResolveProjectRuleset(cwd string) string {
 	projectRulesetOverride := strings.TrimSpace(os.Getenv(envRuleset))
