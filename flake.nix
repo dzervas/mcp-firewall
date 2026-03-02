@@ -13,7 +13,7 @@
 
       nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; });
     in
-    {
+    rec {
       packages = forAllSystems (
         system:
         let
@@ -42,6 +42,13 @@
           default = mcp-firewall;
         }
       );
+
+      checks = forAllSystems (system: {
+        mcp-firewall = packages.${system}.mcp-firewall.overrideAttrs (_: {
+          doCheck = true;
+          checkPhase = "go test ./...";
+        });
+      });
 
       devShells = forAllSystems (
         system:
